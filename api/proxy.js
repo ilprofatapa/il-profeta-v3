@@ -1,7 +1,7 @@
 export default async function handler(req, res) {
     try {
         const params = new URLSearchParams(req.query);
-        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxK3GTcWqA4jXbZE-Xs6xn2kcfcmmOGMQhSNjtDTgIwqItFVWpEkpPNbI6erCllH5ZkaA/exec';
+        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwQxklLdZMcLwdl1vVjitw51I2AoVuHvr5N-EtBTaV43Nwg7C_hEZgjnjCU2gJ6Sbk26w/exec';
 
         // Prima chiamata — ottieni il redirect
         const url = `${APPS_SCRIPT_URL}?${params.toString()}`;
