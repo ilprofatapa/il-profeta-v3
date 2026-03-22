@@ -161,9 +161,7 @@ export async function getPartiteMonitor(): Promise<PartitaLive[]> {
 
     if (error || !partite) return [];
 
-    const risultati: PartitaLive[] = [];
-
-    for (const p of partite) {
+    const risultati: PartitaLive[] = await Promise.all(partite.map(async p => {
       const { data: snaps } = await supabase
         .from('snapshots')
         .select('*')
@@ -172,46 +170,34 @@ export async function getPartiteMonitor(): Promise<PartitaLive[]> {
         .order('timestamp', { ascending: false })
         .limit(1);
 
-      const { data: semafori } = await supabase
-        .from('semafori')
-        .select('*')
-        .eq('fixture_id', p.fixture_id)
-        .order('timestamp', { ascending: false });
-
       const ultimoSnap = snaps && snaps.length > 0 ? snaps[0] : null;
 
-      const ultimoSemaforoHome = semafori
-        ?.filter(s => s.team === 'home')
-        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
-
-      const ultimoSemaforoAway = semafori
-        ?.filter(s => s.team === 'away')
-        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
-
-      risultati.push({
+      return {
         fixtureId:    p.fixture_id,
         homeTeam:     p.home_team,
         awayTeam:     p.away_team,
-        status:       p.status,
-        minute:       ultimoSnap?.minute ?? 0,
-        scoreHome:    0,
-        scoreAway:    0,
+        status:       p.status ?? 'NS',
+        minute:       p.minute ?? 0,
+        scoreHome:    p.score_home ?? 0,
+        scoreAway:    p.score_away ?? 0,
         league:       p.league ?? '',
         kickoff:      p.kickoff,
-        ipHome:       ultimoSnap?.ip_home10  ?? 0,
-        ipAway:       ultimoSnap?.ip_away10  ?? 0,
-        ipHome5:      ultimoSnap?.ip_home5   ?? 0,
-        ipAway5:      ultimoSnap?.ip_away5   ?? 0,
+        ipHome:       ultimoSnap?.ip_home10   ?? 0,
+        ipAway:       ultimoSnap?.ip_away10   ?? 0,
+        ipHome5:      ultimoSnap?.ip_home5    ?? 0,
+        ipAway5:      ultimoSnap?.ip_away5    ?? 0,
         trendHome:    ultimoSnap?.trend_home10 ?? 0,
         trendAway:    ultimoSnap?.trend_away10 ?? 0,
         trendHome5:   ultimoSnap?.trend_home5  ?? 0,
         trendAway5:   ultimoSnap?.trend_away5  ?? 0,
-        semaforoHome: ultimoSemaforoHome?.livello ?? 0,
-        semaforoAway: ultimoSemaforoAway?.livello ?? 0,
-        votoHome:     0,
-        votoAway:     0,
-      });
-    }
+        semaforoHome: p.semaforo_home ?? 0,
+        semaforoAway: p.semaforo_away ?? 0,
+        votoHome:     p.voto_home ?? 0,
+        votoAway:     p.voto_away ?? 0,
+        stats:        p.stats ?? undefined,
+        events:       p.events ?? [],
+      };
+    }));
 
     return risultati;
   } catch (e) {
