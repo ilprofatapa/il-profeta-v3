@@ -1,12 +1,12 @@
 // ============================================================
-// IL PROFETA v2 — App.tsx
+// IL PROFETA v3 — App.tsx
 // Root — tab Pre-Match + Live Monitor
-// v2.4.0
+// v3.0.0 — Supabase Realtime
 // ============================================================
 
 import { useState, useEffect } from 'react';
-import { getPartiteMonitor, aggiungiPartita, rimuoviPartita } from './services/sheetsService';
-import type { PartitaLive } from './services/sheetsService';
+import { aggiungiPartita, rimuoviPartita, getPartiteMonitor, subscribePartite } from './services/supabaseService';
+import type { PartitaLive, PartitaPrematch } from './services/supabaseService';
 import LiveGrid from './components/LiveGrid';
 import LiveMonitor from './components/LiveMonitor';
 import PreMatch from './components/PreMatch';
@@ -20,25 +20,32 @@ export default function App() {
   const [ultimoAggiornamento, setUltimoAggiornamento] = useState<Date | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('prematch');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
-  const [partitePrematch, setPartitePrematch] = useState<import('./services/sheetsService').PartitaPrematch[]>([]);
+  const [partitePrematch, setPartitePrematch] = useState<PartitaPrematch[]>([]);
   const [dataPrematch, setDataPrematch] = useState<string>(new Date().toISOString().split('T')[0]);
 
   useEffect(() => {
-    caricaDati();
-    const intervallo = setInterval(caricaDati, 10000);
-    return () => clearInterval(intervallo);
+    // Caricamento iniziale
+    getPartiteMonitor().then(dati => {
+      setPartite(dati);
+      setUltimoAggiornamento(new Date());
+      setLoading(false);
+    });
+
+    // Supabase Realtime — aggiornamento istantaneo
+    const channel = subscribePartite((dati) => {
+      setPartite(dati);
+      setUltimoAggiornamento(new Date());
+    });
+
+    return () => {
+      channel.unsubscribe();
+    };
   }, []);
 
   const caricaDati = async () => {
-    try {
-      const dati = await getPartiteMonitor();
-      setPartite(dati);
-      setUltimoAggiornamento(new Date());
-    } catch (e) {
-      console.error('Errore caricamento dati:', e);
-    } finally {
-      setLoading(false);
-    }
+    const dati = await getPartiteMonitor();
+    setPartite(dati);
+    setUltimoAggiornamento(new Date());
   };
 
   const handleAddToMonitor = async (
@@ -67,12 +74,17 @@ export default function App() {
       {/* Header */}
       <header className="bg-gray-900 border-b border-gray-800 px-4 py-3 flex items-center justify-between sticky top-0 z-10">
         <h1 className="text-xl font-bold text-yellow-400">
-          ⚽ IL PROFETA v2
+          ⚽ IL PROFETA v3
         </h1>
         {ultimoAggiornamento && (
-          <span className="text-xs text-gray-500">
-            🕐 {ultimoAggiornamento.toLocaleTimeString()}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-[9px] text-emerald-500 font-bold uppercase tracking-widest">
+              ● realtime
+            </span>
+            <span className="text-xs text-gray-500">
+              🕐 {ultimoAggiornamento.toLocaleTimeString()}
+            </span>
+          </div>
         )}
       </header>
 
