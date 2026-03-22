@@ -4,8 +4,8 @@
 // ============================================================
 
 import { useState, useEffect } from 'react';
-import type { PartitaLive, SnapshotGrafico } from '../services/sheetsService';
-import { getTrendLabel, getVotoLabel, semaforoEmoji, getSnapshotsGrafico } from '../services/sheetsService';
+import type { PartitaLive, SnapshotGrafico } from '../services/supabaseService'
+import { getTrendLabel, getVotoLabel, semaforoEmoji, getSnapshotsGrafico } from '../services/supabaseService'
 import TimelineBar from './TimelineBar';
 // ── Semaforo ──────────────────────────────────────────────────
 const SemaforoSignal = ({
