@@ -8,8 +8,8 @@ import {
     getPrematch, setLegheExtra,
     LEGHE_EXTRA_DISPONIBILI,
     getVotoColor, getOddColor,
-} from '../services/sheetsService';
-import type { PartitaPrematch, PrematchMercato } from '../services/sheetsService';
+} from '../services/supabaseService';
+import type { PartitaPrematch, PrematchMercato } from '../services/supabaseService';
 
 const LEGHE_PREFERITE_NOMI = [
     'Champions League', 'Premier League', 'Serie A',
