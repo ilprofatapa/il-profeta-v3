@@ -206,7 +206,12 @@ const LiveCard = ({
   const isHT   = partita.status === 'HT';
   const isFT   = partita.status === 'FT';
 
-  const statusLabel = isHT ? 'HT' : isFT ? 'FT' : partita.status === 'NS' ? 'NS' : `${partita.minute}'`;
+  const statusLabel = isHT ? 'HT'
+            : isFT ? 'FT'
+            : partita.status === 'NS' ? 'NS'
+            : (partita.extraTime && partita.extraTime > 0)
+              ? `${partita.minute}+${partita.extraTime}'`
+              : `${partita.minute}'`;
 
   const useHome  = (partita.semaforoHome ?? 0) >= (partita.semaforoAway ?? 0);
   const livMax   = Math.max(partita.semaforoHome ?? 0, partita.semaforoAway ?? 0);
