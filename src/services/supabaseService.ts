@@ -59,6 +59,7 @@ export interface PartitaLive {
   votoAway: number;
   league: string;
   kickoff?: string;
+  extraTime?: number;
   stats?: PartitaStats;
   events?: EventoLive[];
 }
