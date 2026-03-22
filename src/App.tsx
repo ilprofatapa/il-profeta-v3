@@ -17,7 +17,7 @@ type ViewMode = 'grid' | 'full';
 export default function App() {
   const [partite, setPartite] = useState<PartitaLive[]>([]);
   const [loading, setLoading] = useState(true);
-  const [ultimoAggiornamento, setUltimoAggiornamento] = useState<Date | null>(null);
+  const [_ultimoAggiornamento, setUltimoAggiornamento] = useState<Date | null>(null);
   const [orarioCorrente, setOrarioCorrente] = useState<Date>(new Date());
   const [realtimeConnesso, setRealtimeConnesso] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>('prematch');
