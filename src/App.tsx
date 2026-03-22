@@ -18,6 +18,8 @@ export default function App() {
   const [partite, setPartite] = useState<PartitaLive[]>([]);
   const [loading, setLoading] = useState(true);
   const [ultimoAggiornamento, setUltimoAggiornamento] = useState<Date | null>(null);
+  const [orarioCorrente, setOrarioCorrente] = useState<Date>(new Date());
+  const [realtimeConnesso, setRealtimeConnesso] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>('prematch');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [partitePrematch, setPartitePrematch] = useState<PartitaPrematch[]>([]);
@@ -31,15 +33,25 @@ export default function App() {
       setLoading(false);
     });
 
-    // Supabase Realtime — aggiornamento istantaneo
+    // Orologio sempre aggiornato
+    const tick = setInterval(() => setOrarioCorrente(new Date()), 1000);
+
+    // Supabase Realtime
     const channel = subscribePartite((dati) => {
       setPartite(dati);
       setUltimoAggiornamento(new Date());
     });
 
+    // Monitora stato connessione Realtime
+    channel.on('system', {}, (status: Record<string, string>) => {
+      setRealtimeConnesso(status['extension'] === 'postgres_changes' && status['status'] === 'ok');
+    });
+
     return () => {
+      clearInterval(tick);
       channel.unsubscribe();
     };
+    
   }, []);
 
   const caricaDati = async () => {
@@ -76,16 +88,16 @@ export default function App() {
         <h1 className="text-xl font-bold text-yellow-400">
           ⚽ IL PROFETA v3
         </h1>
-        {ultimoAggiornamento && (
-          <div className="flex items-center gap-2">
-            <span className="text-[9px] text-emerald-500 font-bold uppercase tracking-widest">
-              ● realtime
-            </span>
-            <span className="text-xs text-gray-500">
-              🕐 {ultimoAggiornamento.toLocaleTimeString()}
-            </span>
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          <span className={`text-[9px] font-bold uppercase tracking-widest ${
+            realtimeConnesso ? 'text-emerald-500' : 'text-red-400 animate-pulse'
+          }`}>
+            ● {realtimeConnesso ? 'realtime' : 'riconnessione...'}
+          </span>
+          <span className="text-xs text-gray-500">
+            🕐 {orarioCorrente.toLocaleTimeString()}
+          </span>
+        </div>
       </header>
 
       {/* Tab switcher */}
