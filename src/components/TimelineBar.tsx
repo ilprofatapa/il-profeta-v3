@@ -5,7 +5,7 @@
 // ============================================================
 
 import { useState } from 'react';
-import type { EventoLive } from '../services/sheetsService';
+import type { EventoLive } from '../services/supabaseService';
 
 interface TimelineBarProps {
     events: EventoLive[];
