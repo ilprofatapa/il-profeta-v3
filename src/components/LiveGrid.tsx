@@ -5,8 +5,8 @@
 // ============================================================
 
 import { useState, useEffect } from 'react';
-import type { PartitaLive, EventoLive, SnapshotGrafico } from '../services/supabaseService'
-import { getSnapshotsGrafico } from '../services/supabaseService'
+import type { PartitaLive, EventoLive, SnapshotGrafico } from '../services/supabaseService';
+import { getSnapshotsGrafico } from '../services/supabaseService';
 import LiveMonitor from './LiveMonitor';
 
 // ── Conversione colori ────────────────────────────────────────
