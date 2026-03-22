@@ -179,6 +179,7 @@ export async function getPartiteMonitor(): Promise<PartitaLive[]> {
         awayTeam:     p.away_team,
         status:       p.status ?? 'NS',
         minute:       p.minute ?? 0,
+        extraTime:    p.extra_time ?? 0,
         scoreHome:    p.score_home ?? 0,
         scoreAway:    p.score_away ?? 0,
         league:       p.league ?? '',
