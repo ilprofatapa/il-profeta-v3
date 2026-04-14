@@ -1,12 +1,12 @@
 // ============================================================
-// IL PROFETA v2 — components/LiveGrid.tsx
+// IL PROFETA v3 — components/LiveGrid.tsx
 // Griglia 2 colonne partite live con modal dettaglio
-// v2.4.2 — grafico IP/10' e IP/5'
+// v3.1.0 — pulsante pre-match rapido
 // ============================================================
 
 import { useState, useEffect } from 'react';
-import type { PartitaLive, EventoLive, SnapshotGrafico } from '../services/supabaseService';
-import { getSnapshotsGrafico } from '../services/supabaseService';
+import type { PartitaLive, EventoLive, SnapshotGrafico, PartitaPrematch } from '../services/supabaseService';
+import { getSnapshotsGrafico, getPrematchByFixtureId } from '../services/supabaseService';
 import LiveMonitor from './LiveMonitor';
 
 // ── Conversione colori ────────────────────────────────────────
@@ -50,13 +50,20 @@ const semConfig: Record<number, { bg: string; border: string; dot: string; text:
   3: { bg: 'rgba(52,211,153,0.08)',  border: 'rgba(52,211,153,0.30)',  dot: '#34D399', text: '#34D399', label: 'LIV.3' },
 };
 
-// ── Colore IP dinamico ────────────────────────────────────────
 const ipColorHex = (ip: number): string => {
   if (ip >= 0.55) return '#F87171';
   if (ip >= 0.45) return '#FB923C';
   if (ip >= 0.35) return '#FACC15';
   if (ip > 0.20)  return '#9CA3AF';
   return '#4B5563';
+};
+
+const scoreColor = (v: number): string => {
+  if (v >= 4.0) return '#34D399';
+  if (v >= 3.8) return '#86EFAC';
+  if (v >= 3.5) return '#FACC15';
+  if (v >= 3.0) return '#FB923C';
+  return '#6B7280';
 };
 
 // ── Mini grafico singola squadra ──────────────────────────────
@@ -123,9 +130,7 @@ const MiniGraficoSquadra = ({
 
 // ── Mini grafico SVG — due squadre ────────────────────────────
 const MiniGrafico = ({
-  snapshots,
-  homeTeam,
-  awayTeam,
+  snapshots, homeTeam, awayTeam,
 }: {
   snapshots: SnapshotGrafico[];
   homeTeam: string;
@@ -175,11 +180,11 @@ const MiniTimeline = ({
           <div style={{ position: 'absolute', left: `${(90 / durata) * 100}%`, top: '-4px', width: '1px', height: '10px', background: 'rgba(255,255,255,0.15)' }} />
         )}
         {allEvents.map((ev, i) => {
-          const pct      = Math.min((ev.minute / durata) * 100, 99);
-          const isHome   = ev.team === homeTeam;
-          const isGoal   = ev.type === 'goal' || ev.type === 'penalty' || ev.type === 'autogoal';
-          const isRed    = ev.type === 'red' || ev.type === 'second_yellow';
-          const icon     = isGoal ? '⚽' : isRed ? '🟥' : '🟨';
+          const pct    = Math.min((ev.minute / durata) * 100, 99);
+          const isHome = ev.team === homeTeam;
+          const isGoal = ev.type === 'goal' || ev.type === 'penalty' || ev.type === 'autogoal';
+          const isRed  = ev.type === 'red' || ev.type === 'second_yellow';
+          const icon   = isGoal ? '⚽' : isRed ? '🟥' : '🟨';
           const minColor = isGoal ? (isHome ? '#FACC15' : '#60A5FA') : 'rgba(255,255,255,0.35)';
           return (
             <div key={i} style={{ position: 'absolute', left: `${pct}%`, top: '-10px', transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -193,12 +198,173 @@ const MiniTimeline = ({
   );
 };
 
+// ── Modal Pre-Match rapido ────────────────────────────────────
+const ModalPrematch = ({
+  fixtureId, homeTeam, awayTeam, onClose,
+}: {
+  fixtureId: string;
+  homeTeam: string;
+  awayTeam: string;
+  onClose: () => void;
+}) => {
+  const [dati, setDati] = useState<PartitaPrematch | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getPrematchByFixtureId(fixtureId).then(d => {
+      setDati(d);
+      setLoading(false);
+    });
+  }, [fixtureId]);
+
+  const ScoreBox = ({ label, score, rec }: { label: string; score: number; rec: string }) => (
+    <div style={{
+      background: 'rgba(255,255,255,0.04)', borderRadius: '12px',
+      padding: '12px', textAlign: 'center', flex: 1,
+    }}>
+      <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{label}</div>
+      <div style={{ fontSize: '28px', fontWeight: 700, color: scoreColor(score), lineHeight: 1 }}>{score.toFixed(1)}</div>
+      <div style={{ fontSize: '10px', color: scoreColor(score), marginTop: '4px', opacity: 0.8 }}>{rec}</div>
+    </div>
+  );
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 60,
+        background: 'rgba(0,0,0,0.85)',
+        display: 'flex', alignItems: 'flex-start',
+        justifyContent: 'center', padding: '16px', overflowY: 'auto',
+      }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          width: '100%', maxWidth: '420px',
+          background: '#111827', borderRadius: '20px',
+          border: '1px solid rgba(255,255,255,0.10)',
+          padding: '20px', marginTop: '40px',
+        }}
+      >
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          <div>
+            <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginBottom: '2px' }}>Analisi Pre-Match</div>
+            <div style={{ fontSize: '14px', fontWeight: 600, color: '#fff' }}>{homeTeam}</div>
+            <div style={{ fontSize: '14px', fontWeight: 600, color: '#fff' }}>{awayTeam}</div>
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)',
+              borderRadius: '20px', color: 'rgba(255,255,255,0.6)',
+              padding: '4px 14px', fontSize: '12px', cursor: 'pointer',
+            }}
+          >✕</button>
+        </div>
+
+        {loading && (
+          <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.3)', padding: '32px 0' }}>
+            <div style={{ fontSize: '24px', marginBottom: '8px' }}>⏳</div>
+            <div style={{ fontSize: '12px' }}>Caricamento...</div>
+          </div>
+        )}
+
+        {!loading && !dati && (
+          <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.3)', padding: '32px 0' }}>
+            <div style={{ fontSize: '24px', marginBottom: '8px' }}>📭</div>
+            <div style={{ fontSize: '12px' }}>Nessuna analisi pre-match disponibile</div>
+            <div style={{ fontSize: '11px', marginTop: '4px', color: 'rgba(255,255,255,0.2)' }}>La cache potrebbe non essere stata generata per questa partita</div>
+          </div>
+        )}
+
+        {!loading && dati && (
+          <>
+            {/* Quote */}
+            {dati.odds && (
+              <div style={{ display: 'flex', gap: '6px', marginBottom: '16px' }}>
+                {[
+                  { label: '1', val: dati.odds.home },
+                  { label: 'O2.5', val: dati.odds.over25 },
+                  { label: '2', val: dati.odds.away },
+                ].map(q => (
+                  <div key={q.label} style={{
+                    flex: 1, background: 'rgba(255,255,255,0.03)',
+                    borderRadius: '8px', padding: '6px 4px', textAlign: 'center',
+                    border: '1px solid rgba(255,255,255,0.06)',
+                  }}>
+                    <div style={{ fontSize: '9px', color: 'rgba(255,255,255,0.3)', marginBottom: '2px' }}>{q.label}</div>
+                    <div style={{ fontSize: '13px', fontWeight: 600, color: q.val ? '#FBBF24' : 'rgba(255,255,255,0.2)' }}>
+                      {q.val ? q.val.toFixed(2) : '—'}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Score principali */}
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+              <ScoreBox label="Segno 1" score={dati.sign1} rec={dati.sign1 >= 3.8 ? '✓ Consigliato' : '✗ Evita'} />
+              <ScoreBox label="Over 2.5" score={dati.over25} rec={dati.over25 >= 3.6 ? '✓ Alta prob.' : '✗ Evita'} />
+              <ScoreBox label="Segno 2" score={dati.sign2} rec={dati.sign2 >= 3.8 ? '✓ Consigliato' : '✗ Evita'} />
+            </div>
+
+            {/* Dettaglio parametri */}
+            {dati.dettaglio && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {[
+                  { label: 'Segno 1', mercato: dati.dettaglio.sign1 },
+                  { label: 'Over 2.5', mercato: dati.dettaglio.over25 },
+                  { label: 'Segno 2', mercato: dati.dettaglio.sign2 },
+                ].map(({ label, mercato }) => (
+                  <div key={label}>
+                    <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginBottom: '6px', fontWeight: 600 }}>
+                      {label} — parametri
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                      {mercato.parameters.map((par, i) => (
+                        <div key={i} style={{
+                          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                          padding: '5px 8px', borderRadius: '8px',
+                          background: 'rgba(255,255,255,0.03)',
+                        }}>
+                          <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)', flex: 1, marginRight: '8px' }}>
+                            {par.parameter}
+                          </span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                            <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', maxWidth: '100px', textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {par.value}
+                            </span>
+                            <span style={{
+                              fontSize: '11px', fontWeight: 700,
+                              color: scoreColor(par.score),
+                              minWidth: '24px', textAlign: 'right',
+                            }}>
+                              {par.score.toFixed(1)}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // ── Card singola ──────────────────────────────────────────────
 const LiveCard = ({
-  partita, onClick,
+  partita, onClick, onPrematch,
 }: {
   partita: PartitaLive;
   onClick: () => void;
+  onPrematch: () => void;
 }) => {
   const [snapshots, setSnapshots] = useState<SnapshotGrafico[]>([]);
 
@@ -222,21 +388,19 @@ const LiveCard = ({
   const livTr10  = useHome ? (partita.trendHome ?? 0) : (partita.trendAway ?? 0);
   const livTr5   = useHome ? (partita.trendHome5 ?? 0) : (partita.trendAway5 ?? 0);
 
-  const sem        = semConfig[livMax];
-  // colori calcolati direttamente tramite le funzioni locali
+  const sem = semConfig[livMax];
 
-  // Carica snapshots per il grafico
- useEffect(() => {
+  useEffect(() => {
     if (!isLive && !isHT) return;
     getSnapshotsGrafico(partita.fixtureId).then(setSnapshots);
   }, [partita.fixtureId, partita.minute, isLive, isHT]);
 
   const kpis = [
-    { label: "IP/10'",   val: livIp10.toFixed(2), color: ipColor(livIp10),        big: false },
-    { label: "IP/5'",    val: livIp5.toFixed(2),  color: ipColor(livIp5),         big: false },
+    { label: "IP/10'",    val: livIp10.toFixed(2), color: ipColor(livIp10),        big: false },
+    { label: "IP/5'",     val: livIp5.toFixed(2),  color: ipColor(livIp5),         big: false },
     { label: "Trend/10'", val: `${livTr10 > 0 ? '+' : ''}${livTr10.toFixed(2)}`, color: trendColor(livTr10), big: true },
     { label: "Trend/5'",  val: `${livTr5 > 0 ? '+' : ''}${livTr5.toFixed(2)}`,  color: trendColor(livTr5),  big: true },
-    { label: 'Voto',     val: livVoto.toFixed(1), color: votoColor(livVoto),       big: true },
+    { label: 'Voto',      val: livVoto.toFixed(1), color: votoColor(livVoto),       big: true },
   ];
 
   return (
@@ -253,7 +417,7 @@ const LiveCard = ({
     >
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-        <div>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: '11px', fontWeight: 600, color: '#fff', lineHeight: 1.4 }}>{partita.homeTeam}</div>
           <div style={{ fontSize: '11px', fontWeight: 600, color: '#fff', lineHeight: 1.4 }}>{partita.awayTeam}</div>
           <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', marginTop: '2px' }}>{partita.league}</div>
@@ -261,7 +425,7 @@ const LiveCard = ({
             {partita.kickoff ? new Date(partita.kickoff).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''}
           </div>
         </div>
-        <div style={{ textAlign: 'right' }}>
+        <div style={{ textAlign: 'right', flexShrink: 0 }}>
           <div style={{ fontSize: '20px', fontWeight: 700, color: '#FBBF24', letterSpacing: '2px' }}>
             {partita.scoreHome} – {partita.scoreAway}
           </div>
@@ -269,6 +433,29 @@ const LiveCard = ({
             {isLive && <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#EF4444', display: 'inline-block', animation: 'livepulse 1.5s infinite' }} />}
             <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)' }}>{statusLabel}</span>
           </div>
+          {/* Pulsante Pre-Match */}
+          <button
+            onClick={e => { e.stopPropagation(); onPrematch(); }}
+            style={{
+              marginTop: '5px',
+              background: 'rgba(99,102,241,0.15)',
+              border: '1px solid rgba(99,102,241,0.35)',
+              borderRadius: '8px',
+              color: '#A5B4FC',
+              padding: '3px 8px',
+              fontSize: '10px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '3px',
+              transition: 'background 0.15s',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(99,102,241,0.28)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'rgba(99,102,241,0.15)')}
+          >
+            📋 Pre-Match
+          </button>
         </div>
       </div>
 
@@ -304,7 +491,7 @@ const LiveCard = ({
       </div>
 
       {/* Grafico IP */}
-    {(isLive || isHT) && (
+      {(isLive || isHT) && (
         <MiniGrafico
           snapshots={snapshots}
           homeTeam={partita.homeTeam}
@@ -327,7 +514,7 @@ const LiveCard = ({
   );
 };
 
-// ── Modal dettaglio ───────────────────────────────────────────
+// ── Modal dettaglio live ──────────────────────────────────────
 const ModalDettaglio = ({
   partita, onClose, onRemove,
 }: {
@@ -368,7 +555,8 @@ interface LiveGridProps {
 }
 
 const LiveGrid = ({ partite, onRefresh, onRemove }: LiveGridProps) => {
-  const [modalPartita, setModalPartita] = useState<PartitaLive | null>(null);
+  const [modalPartita, setModalPartita]   = useState<PartitaLive | null>(null);
+  const [prematchPartita, setPrematchPartita] = useState<PartitaLive | null>(null);
 
   if (partite.length === 0) {
     return (
@@ -406,15 +594,31 @@ const LiveGrid = ({ partite, onRefresh, onRemove }: LiveGridProps) => {
             return ta - tb;
           })
           .map(p => (
-            <LiveCard key={p.fixtureId} partita={p} onClick={() => setModalPartita(p)} />
+            <LiveCard
+              key={p.fixtureId}
+              partita={p}
+              onClick={() => setModalPartita(p)}
+              onPrematch={() => setPrematchPartita(p)}
+            />
           ))}
       </div>
 
+      {/* Modal dettaglio live */}
       {modalPartita && (
         <ModalDettaglio
           partita={modalPartita}
           onClose={() => setModalPartita(null)}
           onRemove={(id) => { onRemove(id); setModalPartita(null); }}
+        />
+      )}
+
+      {/* Modal pre-match rapido */}
+      {prematchPartita && (
+        <ModalPrematch
+          fixtureId={prematchPartita.fixtureId}
+          homeTeam={prematchPartita.homeTeam}
+          awayTeam={prematchPartita.awayTeam}
+          onClose={() => setPrematchPartita(null)}
         />
       )}
 
