@@ -589,10 +589,11 @@ const LiveGrid = ({ partite, onRefresh, onRemove }: LiveGridProps) => {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: '10px' }}>
         {[...partite]
           .sort((a, b) => {
-            const ta = a.kickoff ? new Date(a.kickoff).getTime() : 0;
-            const tb = b.kickoff ? new Date(b.kickoff).getTime() : 0;
-            return ta - tb;
-          })
+  const ta = a.kickoff ? new Date(a.kickoff).getTime() : 0;
+  const tb = b.kickoff ? new Date(b.kickoff).getTime() : 0;
+  if (ta !== tb) return ta - tb;
+  return a.fixtureId.localeCompare(b.fixtureId);
+})
           .map(p => (
             <LiveCard
               key={p.fixtureId}
