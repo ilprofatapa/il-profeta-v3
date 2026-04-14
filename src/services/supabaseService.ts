@@ -391,3 +391,22 @@ export const getOddColor = (odd: number | null): string => {
   if (odd <= 2.80) return 'text-yellow-400';
   return 'text-gray-500';
 };
+
+// ── Aggiungere questa funzione a supabaseService.ts ──────────
+// Legge i dati pre-match dalla cache Supabase per fixtureId
+
+export async function getPrematchByFixtureId(fixtureId: string): Promise<PartitaPrematch | null> {
+  try {
+    const { data, error } = await supabase
+      .from('cache_prematch')
+      .select('data')
+      .eq('fixture_id', fixtureId)
+      .single();
+
+    if (error || !data) return null;
+    return data.data as PartitaPrematch;
+  } catch (e) {
+    console.error('Errore getPrematchByFixtureId:', e);
+    return null;
+  }
+}
