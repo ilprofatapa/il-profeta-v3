@@ -1,6 +1,6 @@
 // ============================================================
-// IL PROFETA v2 — components/PreMatch.tsx
-// v2.3.1 — con popup dettaglio analisi
+// IL PROFETA v3 — components/PreMatch.tsx
+// v3.1.0 — pulsante preferiti toggle (aggiungi/rimuovi)
 // ============================================================
 
 import { useState, useEffect, useCallback } from 'react';
@@ -12,8 +12,8 @@ import {
 import type { PartitaPrematch, PrematchMercato } from '../services/supabaseService';
 
 const LEGHE_PREFERITE_NOMI = [
-    'Champions League', 'Premier League', 'Serie A',
-    'La Liga', 'Bundesliga', 'Ligue 1', 'Eredivisie', 'Primeira Liga',
+    'Champions League', 'Europa League', 'Premier League', 'Serie A',
+    'La Liga', 'Bundesliga', 'Ligue 1', 'Eredivisie',
 ];
 
 const AREE = ['Sud America', 'Nord America', 'Europa', 'Asia'];
@@ -111,8 +111,6 @@ const AnalisiPopup = ({
 
                 {/* Contenuto scrollabile */}
                 <div className="overflow-y-auto p-5 space-y-3">
-
-                    {/* Score mercato attivo */}
                     <div className="flex items-center justify-between bg-gray-900 rounded-2xl px-4 py-3 border border-gray-800">
                         <span className="text-xs font-black uppercase tracking-widest text-gray-500">
                             {nomi[tab]}
@@ -134,7 +132,6 @@ const AnalisiPopup = ({
                         </div>
                     </div>
 
-                    {/* Parametri */}
                     {mercato.parameters.map((param, idx) => (
                         <div key={idx} className="bg-gray-900 rounded-xl p-3 border border-gray-800/50 space-y-1">
                             <div className="flex items-center justify-between">
@@ -169,11 +166,15 @@ const AnalisiPopup = ({
 // ── Card partita prematch ─────────────────────────────────────
 const PartitaCard = ({
     partita,
+    isInMonitor,
     onAddToMonitor,
+    onRemoveFromMonitor,
     onShowAnalisi,
 }: {
     partita: PartitaPrematch;
+    isInMonitor: boolean;
     onAddToMonitor: (p: PartitaPrematch) => void;
+    onRemoveFromMonitor: (fixtureId: string) => void;
     onShowAnalisi: (p: PartitaPrematch) => void;
 }) => {
     const kickoff = new Date(partita.commenceTime).toLocaleTimeString('it-IT', {
@@ -257,12 +258,24 @@ const PartitaCard = ({
                         🔍 Analisi
                     </button>
                 )}
-                <button
-                    onClick={() => onAddToMonitor(partita)}
-                    className="flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-500 hover:text-gray-300 transition-all"
-                >
-                    + Preferite
-                </button>
+
+                {/* Pulsante monitor — toggle aggiungi/rimuovi */}
+                {isInMonitor ? (
+                    <button
+                        onClick={() => onRemoveFromMonitor(partita.fixtureId)}
+                        className="flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-emerald-500/15 hover:bg-rose-500/15 border border-emerald-500/40 hover:border-rose-500/40 text-emerald-400 hover:text-rose-400 transition-all group"
+                    >
+                        <span className="group-hover:hidden">✓ Aggiunta</span>
+                        <span className="hidden group-hover:inline">✕ Rimuovi</span>
+                    </button>
+                ) : (
+                    <button
+                        onClick={() => onAddToMonitor(partita)}
+                        className="flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-500 hover:text-gray-300 transition-all"
+                    >
+                        + Preferite
+                    </button>
+                )}
             </div>
         </div>
     );
@@ -345,27 +358,32 @@ const LegheExtraPanel = ({
 // ── PreMatch principale ───────────────────────────────────────
 const PreMatch = ({
     onAddToMonitor,
+    onRemoveFromMonitor,
+    partiteMonitor,
     partiteEsterne,
     onPartiteChange,
     dataEsterna,
     onDataChange,
 }: {
     onAddToMonitor: (fixtureId: string, homeTeam: string, awayTeam: string, kickoff: string, league: string) => void;
+    onRemoveFromMonitor: (fixtureId: string) => void;
+    partiteMonitor: string[];
     partiteEsterne: PartitaPrematch[];
     onPartiteChange: (p: PartitaPrematch[]) => void;
     dataEsterna: string;
     onDataChange: (d: string) => void;
 }) => {
-    const [date, setDate]                   = useState(dataEsterna);
-    const [partite, setPartite]             = useState<PartitaPrematch[]>(partiteEsterne);
-    const [loading, setLoading]             = useState(false);
-    const [processing, setProcessing]       = useState(false);
+    const [date, setDate]                     = useState(dataEsterna);
+    const [partite, setPartite]               = useState<PartitaPrematch[]>(partiteEsterne);
+    const [loading, setLoading]               = useState(false);
+    const [processing, setProcessing]         = useState(false);
     const [showLeghePanel, setShowLeghePanel] = useState(false);
-    const [filtroArea, setFiltroArea]       = useState<string>('Tutte');
-    const [filtroMin, setFiltroMin]         = useState<number>(0);
-     const [ordinamento, setOrdinamento] = useState<'voto' | 'lega' | 'orario'>('voto');
+    const [filtroArea, setFiltroArea]         = useState<string>('Tutte');
+    const [filtroMin, setFiltroMin]           = useState<number>(0);
+    const [ordinamento, setOrdinamento]       = useState<'voto' | 'lega' | 'orario'>('voto');
     const [analisiPartita, setAnalisiPartita] = useState<PartitaPrematch | null>(null);
-    const [pollingRef, setPollingRef]       = useState<ReturnType<typeof setInterval> | null>(null);
+    const [pollingRef, setPollingRef]         = useState<ReturnType<typeof setInterval> | null>(null);
+
     useEffect(() => { onDataChange(date); }, [date]);
     useEffect(() => { onPartiteChange(partite); }, [partite]);
 
@@ -434,7 +452,6 @@ const PreMatch = ({
                 if (legaCompare !== 0) return legaCompare;
                 return new Date(a.commenceTime).getTime() - new Date(b.commenceTime).getTime();
             }
-            // orario
             const timeCompare = new Date(a.commenceTime).getTime() - new Date(b.commenceTime).getTime();
             if (timeCompare !== 0) return timeCompare;
             return a.leagueName.localeCompare(b.leagueName);
@@ -558,6 +575,7 @@ const PreMatch = ({
                         <PartitaCard
                             key={p.fixtureId}
                             partita={p}
+                            isInMonitor={partiteMonitor.includes(p.fixtureId)}
                             onShowAnalisi={p => setAnalisiPartita(p)}
                             onAddToMonitor={partita => onAddToMonitor(
                                 partita.fixtureId,
@@ -566,6 +584,7 @@ const PreMatch = ({
                                 partita.commenceTime,
                                 partita.leagueName,
                             )}
+                            onRemoveFromMonitor={onRemoveFromMonitor}
                         />
                     ))}
                 </div>
