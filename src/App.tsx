@@ -137,12 +137,14 @@ export default function App() {
         {/* TAB PRE-MATCH */}
         <div style={{ display: activeTab === 'prematch' ? 'block' : 'none' }}>
           <PreMatch
-            onAddToMonitor={handleAddToMonitor}
-            partiteEsterne={partitePrematch}
-            onPartiteChange={setPartitePrematch}
-            dataEsterna={dataPrematch}
-            onDataChange={setDataPrematch}
-          />
+  onAddToMonitor={handleAddToMonitor}
+  onRemoveFromMonitor={handleRemove}
+  partiteMonitor={partite.map(p => p.fixtureId)}
+  partiteEsterne={partitePrematch}
+  onPartiteChange={setPartitePrematch}
+  dataEsterna={dataPrematch}
+  onDataChange={setDataPrematch}
+/>
         </div>
 
         {/* TAB LIVE */}
