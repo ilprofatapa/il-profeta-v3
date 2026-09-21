@@ -393,7 +393,7 @@ const PreMatch = ({
         if (pollingRef) { clearInterval(pollingRef); setPollingRef(null); }
     }, [pollingRef]);
 
-    const avviaScan = async () => {
+      const avviaScan = async () => {
         stopPolling();
         setLoading(true);
         setPartite([]);
@@ -401,37 +401,15 @@ const PreMatch = ({
 
         try {
             const result = await getPrematch(date);
-            if (result.status === 'ok' && result.partite.length > 0) {
+            if (result.status === 'ok') {
                 setPartite(result.partite);
-                setLoading(false);
-                return;
             }
-
-            setProcessing(true);
             setLoading(false);
-
-            const interval = setInterval(async () => {
-                try {
-                    const poll = await getPrematch(date);
-                    if (poll.status === 'ok' && poll.partite.length > 0) {
-                        setPartite(poll.partite);
-                        setProcessing(false);
-                        clearInterval(interval);
-                        setPollingRef(null);
-                    }
-                } catch(e) {
-                    console.error('Errore polling:', e);
-                }
-            }, 10_000);
-
-            setPollingRef(interval);
-
         } catch(e) {
             console.error('Errore avviaScan:', e);
             setLoading(false);
         }
     };
-
     useEffect(() => {
         return () => { if (pollingRef) clearInterval(pollingRef); };
     }, [pollingRef]);
