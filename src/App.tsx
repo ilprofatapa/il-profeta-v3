@@ -10,8 +10,9 @@ import type { PartitaLive, PartitaPrematch } from './services/supabaseService';
 import LiveGrid from './components/LiveGrid';
 import LiveMonitor from './components/LiveMonitor';
 import PreMatch from './components/PreMatch';
+import Bankroll from './components/Bankroll';
 
-type Tab = 'prematch' | 'live';
+type Tab = 'prematch' | 'live' | 'bankroll';
 type ViewMode = 'grid' | 'full';
 
 export default function App() {
@@ -105,7 +106,7 @@ export default function App() {
         <div className="flex gap-1 bg-gray-900/60 rounded-2xl p-1 border border-gray-800/50 w-fit">
           <button
             onClick={() => setActiveTab('prematch')}
-            className={`px-6 py-2.5 rounded-xl text-sm font-black uppercase tracking-wider transition-all ${
+            className={`px-3 sm:px-6 py-2.5 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider whitespace-nowrap transition-all ${
               activeTab === 'prematch'
                 ? 'bg-yellow-500 text-gray-950 shadow-[0_8px_20px_rgba(234,179,8,0.2)]'
                 : 'text-gray-500 hover:text-gray-300'
@@ -115,7 +116,7 @@ export default function App() {
           </button>
           <button
             onClick={() => setActiveTab('live')}
-            className={`relative px-6 py-2.5 rounded-xl text-sm font-black uppercase tracking-wider transition-all ${
+            className={`relative px-3 sm:px-6 py-2.5 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider whitespace-nowrap transition-all ${
               activeTab === 'live'
                 ? 'bg-yellow-500 text-gray-950 shadow-[0_8px_20px_rgba(234,179,8,0.2)]'
                 : 'text-gray-500 hover:text-gray-300'
@@ -127,6 +128,16 @@ export default function App() {
                 {liveCount}
               </span>
             )}
+          </button>
+          <button
+            onClick={() => setActiveTab('bankroll')}
+            className={`px-3 sm:px-6 py-2.5 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider whitespace-nowrap transition-all ${
+              activeTab === 'bankroll'
+                ? 'bg-yellow-500 text-gray-950 shadow-[0_8px_20px_rgba(234,179,8,0.2)]'
+                : 'text-gray-500 hover:text-gray-300'
+            }`}
+          >
+            Bankroll
           </button>
         </div>
       </div>
@@ -146,6 +157,9 @@ export default function App() {
   onDataChange={setDataPrematch}
 />
         </div>
+
+        {/* TAB BANKROLL */}
+        {activeTab === 'bankroll' && <Bankroll />}
 
         {/* TAB LIVE */}
         {activeTab === 'live' && (
