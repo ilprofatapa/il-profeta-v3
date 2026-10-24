@@ -154,7 +154,7 @@ export function costruisciPosizioni(d: DatiBankroll): Posizione[] {
     const prima = bancate[0] ?? ops[0];
     const seg = prima.segnale_id !== null ? segById.get(prima.segnale_id) : undefined;
     const tipoSeg = seg?.tipo ?? '';
-    const strategia = tipoSeg.includes('SFAV') ? 'Sfavorita' : tipoSeg.startsWith('S_') ? 'Pareggio' : 'Manuale';
+const strategia = tipoSeg.includes('OVER') ? 'Over-pari' : tipoSeg.includes('SFAV') ? 'Sfavorita' : tipoSeg.startsWith('S_') ? 'Pareggio' : 'Manuale';
     const fascia = ops.find(o => o.fascia)?.fascia ?? null;
 
     let stake = 0, resp = 0, manca = false;
