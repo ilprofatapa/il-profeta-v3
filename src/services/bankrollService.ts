@@ -30,7 +30,7 @@ export interface Segnale {
   quota_max: number | null;
 }
 
-export type TipoMovimento = 'iniziale' | 'deposito' | 'prelievo';
+export type TipoMovimento = 'iniziale' | 'deposito' | 'prelievo' | 'bonus';
 
 export interface Movimento {
   id: number;
@@ -237,7 +237,8 @@ export interface PuntoGrafico {
 }
 
 export interface Riepilogo {
-  rollIniziale: number;
+    rollIniziale: number;
+  bonus: number;
   versamenti: number;
   prelievi: number;
   plTrading: number;
@@ -262,7 +263,7 @@ export function calcolaRiepilogo(d: DatiBankroll, pos: Posizione[]): Riepilogo {
   const iniziali = d.movimenti.filter(m => m.tipo === 'iniziale');
   const rollIniziale = iniziali.length ? iniziali[iniziali.length - 1].importo : 0;
   const versamenti = d.movimenti.filter(m => m.tipo === 'deposito').reduce((s, m) => s + m.importo, 0);
-  const prelievi = d.movimenti.filter(m => m.tipo === 'prelievo').reduce((s, m) => s + m.importo, 0);
+  const prelievi = d.movimenti.filter(m => m.tipo === 'prelievo').reduce((s, m) => s + m.importo, 0);   const bonus = d.movimenti.filter(m => m.tipo === 'bonus').reduce((s, m) => s + m.importo, 0);
 
   const chiuse = pos.filter(p => p.esito !== null);
   const aperte = pos.filter(p => p.esito === null);
@@ -287,7 +288,7 @@ export function calcolaRiepilogo(d: DatiBankroll, pos: Posizione[]): Riepilogo {
   const ev: Ev[] = [];
   d.movimenti.forEach(m => {
     if (m.tipo === 'iniziale') return;
-    ev.push({ t: new Date(m.created_at).getTime(), dSaldo: m.tipo === 'deposito' ? m.importo : -m.importo, dTrad: 0, dMult: 0 });
+    ev.push({ t: new Date(m.created_at).getTime(), dSaldo: m.tipo === 'prelievo' ? -m.importo : m.importo, dTrad: 0, dMult: 0 });
   });
   chiuse.forEach(p => {
     const t = (p.dataChiusura ?? p.data)?.getTime() ?? 0;
@@ -303,7 +304,7 @@ export function calcolaRiepilogo(d: DatiBankroll, pos: Posizione[]): Riepilogo {
   const dopo = ev.filter(e => e.t > dataRoll);
   const somma = (a: Ev[]) => a.reduce((x, e) => x + e.dSaldo, 0);
   const saldo = rollIniziale + somma(dopo) - inGiocoMultiple;
-  const plDopoRoll = dopo.reduce((x, e) => x + e.dTrad + e.dMult, 0);
+  const bonusDopo = d.movimenti     .filter(m => m.tipo === 'bonus' && new Date(m.created_at).getTime() > dataRoll)     .reduce((x, m) => x + m.importo, 0);   const plDopoRoll = dopo.reduce((x, e) => x + e.dTrad + e.dMult, 0) + bonusDopo;
 
   const inizio = ev[0]?.t ?? dataRoll ?? Date.now();
   let s = rollIniziale - somma(prima), tr = 0, mu = 0;   // storico ricostruito all'indietro
@@ -325,7 +326,7 @@ export function calcolaRiepilogo(d: DatiBankroll, pos: Posizione[]): Riepilogo {
   const respMax = pos.reduce((m, p) => Math.max(m, p.responsabilita), 0);
 
   return {
-    rollIniziale, versamenti, prelievi, plTrading, plMultiple, inGiocoMultiple, saldo, capitaleVersato,
+    rollIniziale, bonus, versamenti, prelievi, plTrading, plMultiple, inGiocoMultiple, saldo, capitaleVersato,
     rendimentoRoll: capitaleVersato > 0 ? (plDopoRoll / capitaleVersato) * 100 : 0,
     maxDrawdown: maxDD, maxDrawdownPct: maxDDpct,
     serieNegativa: serieNegativaMax(chiuse.map(p => p.esito ?? 0)),
