@@ -166,7 +166,7 @@ export default function Bankroll() {
         <Kpi label="Saldo attuale" valore={eur(r.saldo)} tono="text-yellow-400"
           sotto={r.inGiocoMultiple ? `di cui ${eur(r.inGiocoMultiple)} in multiple aperte` : `capitale versato ${eur(r.capitaleVersato)}`} />
         <Kpi label="Profitto trading" valore={eurSegno(r.plTrading)} tono={colore(r.plTrading)} sotto={`${r.trading.n} operazioni chiuse`} />
-        <Kpi label="Profitto multiple" valore={eurSegno(r.plMultiple)} tono={colore(r.plMultiple)} sotto={`${r.multiple.n} multiple chiuse`} />
+        <Kpi label="Profitto multiple" valore={eurSegno(r.plMultiple)} tono={colore(r.plMultiple)} sotto={`${r.multiple.n} multiple chiuse${r.bonus ? ` · bonus ${eurSegno(r.bonus)}` : ''}`} />
         <Kpi label="Rendimento sul roll" valore={pct(r.rendimentoRoll)} tono={colore(r.rendimentoRoll)}
           sotto={`roll ${eur(r.rollIniziale)} · versamenti ${eur(r.versamenti)}`} />
       </div>
@@ -347,7 +347,7 @@ export default function Bankroll() {
           <select className={`${inputCls} w-36`} value={movTipo} onChange={e => setMovTipo(e.target.value as TipoMovimento)}>
             <option value="iniziale">Roll iniziale</option>
             <option value="deposito">Versamento</option>
-            <option value="prelievo">Prelievo</option>
+            <option value="prelievo">Prelievo</option>             <option value="bonus">Bonus</option>
           </select>
           <input className={`${inputCls} w-28`} placeholder="Importo €" inputMode="decimal" value={movImporto} onChange={e => setMovImporto(e.target.value)} />
           <input className={`${inputCls} flex-1 min-w-[140px]`} placeholder="Nota (facoltativa)" value={movNota} onChange={e => setMovNota(e.target.value)} />
@@ -361,7 +361,7 @@ export default function Bankroll() {
               <div key={m.id} className="flex items-center gap-3 text-xs border-t border-gray-800/70 pt-1.5">
                 <span className="text-gray-500 w-16">{dataBreve(m.created_at)}</span>
                 <span className="font-bold text-gray-300 w-28">
-                  {m.tipo === 'iniziale' ? '🏦 Roll iniziale' : m.tipo === 'deposito' ? '➕ Versamento' : '💸 Prelievo'}
+                  {m.tipo === 'iniziale' ? '🏦 Roll iniziale' : m.tipo === 'deposito' ? '➕ Versamento' : m.tipo === 'bonus' ? '🎁 Bonus' : '💸 Prelievo'}
                 </span>
                 <span className={`tabular-nums font-bold ${m.tipo === 'prelievo' ? 'text-red-400' : 'text-emerald-400'}`}>
                   {m.tipo === 'prelievo' ? '−' : ''}{eur(m.importo)}
