@@ -423,6 +423,8 @@ export interface Giorno {
   totale: number;
   nTrading: number;
   nMultiple: number;
+  rischio: number;       // somma delle responsabilità delle bancate chiuse nel giorno
+  puntateMultiple: number;
   voci: { testo: string; euro: number; tipo: 'trading' | 'multipla' }[];
 }
 
@@ -433,20 +435,20 @@ export const chiaveGiorno = (t: Date | string | number) =>
 export function risultatiGiornalieri(d: DatiBankroll, pos: Posizione[]): Map<string, Giorno> {
   const out = new Map<string, Giorno>();
   const prendi = (k: string) => {
-    if (!out.has(k)) out.set(k, { chiave: k, trading: 0, multiple: 0, totale: 0, nTrading: 0, nMultiple: 0, voci: [] });
+    if (!out.has(k)) out.set(k, { chiave: k, trading: 0, multiple: 0, totale: 0, nTrading: 0, nMultiple: 0, rischio: 0, puntateMultiple: 0, voci: [] });
     return out.get(k)!;
   };
   pos.filter(p => p.esito !== null).forEach(p => {
     const t = p.dataChiusura ?? p.data;
     if (!t) return;
     const g = prendi(chiaveGiorno(t));
-    g.trading += p.esito!; g.totale += p.esito!; g.nTrading++;
+    g.trading += p.esito!; g.totale += p.esito!; g.nTrading++; g.rischio += p.responsabilita;
     g.voci.push({ testo: `${p.partita}${p.lega ? ' · ' + p.lega : ''}`, euro: p.esito!, tipo: 'trading' });
   });
   d.multiple.filter(m => m.esito !== 'in_corso').forEach(m => {
     const net = (m.ritorno ?? 0) - m.importo;
     const g = prendi(chiaveGiorno(m.chiusa_il ?? m.created_at));
-    g.multiple += net; g.totale += net; g.nMultiple++;
+    g.multiple += net; g.totale += net; g.nMultiple++; g.puntateMultiple += m.importo;
     g.voci.push({ testo: `Multipla @${m.quota.toFixed(2)} (${m.esito})${m.nota ? ' · ' + m.nota : ''}`, euro: net, tipo: 'multipla' });
   });
   out.forEach(g => { g.trading = round2(g.trading); g.multiple = round2(g.multiple); g.totale = round2(g.totale); });
@@ -462,7 +464,7 @@ export function lunediDi(chiave: string): string {
   return d.toISOString().slice(0, 10);
 }
 
-export interface Periodo { chiave: string; etichetta: string; totale: number; trading: number; multiple: number; giorniVerdi: number; giorniRossi: number; n: number; }
+export interface Periodo { chiave: string; etichetta: string; totale: number; trading: number; multiple: number; giorniVerdi: number; giorniRossi: number; n: number; rischio: number; puntateMultiple: number; }
 
 export function perPeriodo(giorni: Map<string, Giorno>, tipo: 'settimana' | 'mese'): Periodo[] {
   const g = new Map<string, Periodo>();
@@ -472,10 +474,11 @@ export function perPeriodo(giorni: Map<string, Giorno>, tipo: 'settimana' | 'mes
     if (!g.has(k)) {
       const [a, m, d] = k.split('-');
       const etichetta = tipo === 'settimana' ? `sett. ${d}/${m}` : `${mesi[Number(m) - 1]} ${a.slice(2)}`;
-      g.set(k, { chiave: k, etichetta, totale: 0, trading: 0, multiple: 0, giorniVerdi: 0, giorniRossi: 0, n: 0 });
+      g.set(k, { chiave: k, etichetta, totale: 0, trading: 0, multiple: 0, giorniVerdi: 0, giorniRossi: 0, n: 0, rischio: 0, puntateMultiple: 0 });
     }
     const p = g.get(k)!;
     p.totale += gg.totale; p.trading += gg.trading; p.multiple += gg.multiple;
+    p.rischio += gg.rischio; p.puntateMultiple += gg.puntateMultiple;
     p.n += gg.nTrading + gg.nMultiple;
     if (gg.totale > 0) p.giorniVerdi++; else if (gg.totale < 0) p.giorniRossi++;
   });
@@ -485,3 +488,58 @@ export function perPeriodo(giorni: Map<string, Giorno>, tipo: 'settimana' | 'mes
 }
 
 const round2 = (v: number) => Math.round(v * 100) / 100;
+
+// ── Capitale a una certa data (per le percentuali del Diario) ──
+// Parte dall'ultimo roll registrato prima di quella data e aggiunge tutto ciò che è successo dopo
+// (versamenti, prelievi, bonus, trading chiuso, multiple chiuse). Prima del primo roll: ricostruito all'indietro.
+export function funzioneCapitale(d: DatiBankroll, pos: Posizione[]): (t: number) => number {
+  type Ev = { t: number; v: number };
+  const ev: Ev[] = [];
+  d.movimenti.forEach(m => {
+    if (m.tipo === 'iniziale') return;
+    ev.push({ t: new Date(m.created_at).getTime(), v: m.tipo === 'prelievo' ? -m.importo : m.importo });
+  });
+  pos.filter(p => p.esito !== null).forEach(p => ev.push({ t: (p.dataChiusura ?? p.data)?.getTime() ?? 0, v: p.esito ?? 0 }));
+  d.multiple.filter(m => m.esito !== 'in_corso').forEach(m =>
+    ev.push({ t: new Date(m.chiusa_il ?? m.created_at).getTime(), v: (m.ritorno ?? 0) - m.importo }));
+  ev.sort((a, b) => a.t - b.t);
+  const rolls = d.movimenti.filter(m => m.tipo === 'iniziale')
+    .map(m => ({ t: new Date(m.created_at).getTime(), v: m.importo })).sort((a, b) => a.t - b.t);
+  const somma = (da: number, a: number) => ev.filter(e => e.t > da && e.t < a).reduce((s, e) => s + e.v, 0);
+  return (t: number) => {
+    if (!rolls.length) return 0;
+    const prima = rolls.filter(r => r.t <= t);
+    if (prima.length) { const r = prima[prima.length - 1]; return r.v + somma(r.t, t); }
+    return rolls[0].v - somma(t - 1, rolls[0].t);     // prima del primo roll: all'indietro
+  };
+}
+
+// Inizio di un giorno "AAAA-MM-GG" (ora del dispositivo, cioè italiana)
+export const inizioGiorno = (chiave: string) => new Date(chiave + 'T00:00:00').getTime();
+
+// ── Risultati per campionato (sezione grafici) ──
+export interface RigaCampionato { nome: string; n: number; verdi: number; pl: number; rischio: number; media: number; rendimento: number; pctVerdi: number; }
+
+export function perCampionato(chiuse: Posizione[], multiple: Multipla[], opz: { da: number; conMultiple: boolean; conSenzaLega: boolean }): RigaCampionato[] {
+  const g = new Map<string, { esiti: number[]; rischio: number }>();
+  const add = (k: string, e: number, r: number) => {
+    if (!g.has(k)) g.set(k, { esiti: [], rischio: 0 });
+    const x = g.get(k)!; x.esiti.push(e); x.rischio += r;
+  };
+  chiuse.forEach(p => {
+    const t = (p.dataChiusura ?? p.data)?.getTime() ?? 0;
+    if (t < opz.da || p.esito === null) return;
+    if (!p.lega && !opz.conSenzaLega) return;
+    add(p.lega ?? 'Senza campionato', p.esito, p.responsabilita);
+  });
+  if (opz.conMultiple) multiple.filter(m => m.esito !== 'in_corso' && m.esito !== 'annullata').forEach(m => {
+    if (new Date(m.chiusa_il ?? m.created_at).getTime() < opz.da) return;
+    add('🎟 Multiple', (m.ritorno ?? 0) - m.importo, m.importo);
+  });
+  return [...g.entries()].map(([nome, x]) => {
+    const pl = round2(x.esiti.reduce((s, e) => s + e, 0));
+    const verdi = x.esiti.filter(e => e > 0).length;
+    return { nome, n: x.esiti.length, verdi, pl, rischio: round2(x.rischio), media: pl / x.esiti.length,
+             rendimento: x.rischio > 0 ? (pl / x.rischio) * 100 : 0, pctVerdi: (verdi / x.esiti.length) * 100 };
+  }).sort((a, b) => b.pl - a.pl);
+}
